@@ -3,6 +3,13 @@
 # prerequisites - Install RFSoC-MTS overlay
 https://github.com/Xilinx/RFSoC-MTS
 
+# Regenerating the Vivado Project
+Unzip cir_sounder.sources.zip.  cd to the folder and 
+
+source cir_sounder.tcl
+
+in Vivado to regenerate the project.
+
 # Wireless connection
 Connect a USB Wi-Fi dongle that is supported by RFSoC 4x2. 
 
