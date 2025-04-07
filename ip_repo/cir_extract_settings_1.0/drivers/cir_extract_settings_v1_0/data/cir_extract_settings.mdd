@@ -1,0 +1,10 @@
+
+
+OPTION psf_version = 2.1;
+
+BEGIN DRIVER cir_extract_settings
+	OPTION supported_peripherals = (cir_extract_settings);
+	OPTION copyfiles = all;
+	OPTION VERSION = 1.0;
+	OPTION NAME = cir_extract_settings;
+END DRIVER
