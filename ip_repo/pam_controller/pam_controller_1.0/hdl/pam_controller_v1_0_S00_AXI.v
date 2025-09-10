@@ -39,6 +39,12 @@
         output wire cmd_done_3,
         output wire cmd_done_4,        
         
+        // Kai 04/21/2025  the sector IDs are routed out to other blocks. 
+        output wire [6:0] sector_1,
+        output wire [6:0] sector_2,
+        output wire [6:0] sector_3,
+        output wire [6:0] sector_4,
+        
         // Kai: These signals are for debugging use.
         output wire trig_start_1,
         output wire trig_end_1,
@@ -692,7 +698,7 @@
     //memout bit 3:0 = gain
     //sector and gain must output LSB first
     wire [3:0] gain_1, gain_2, gain_3, gain_4;
-    wire [6:0] sector_1, sector_2, sector_3, sector_4;
+    //wire [6:0] sector_1, sector_2, sector_3, sector_4; // Kai 04/21/2025: moved to the port definition
     reg [94:0] cmd_data_2, cmd_data_3, cmd_data_4;
     //cmd_data_1 
     

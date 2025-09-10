@@ -27,6 +27,10 @@
 		output wire [31:0] slv_reg9_output,
 		output wire [31:0] slv_reg10_output,
 		output wire [31:0] slv_reg11_output,
+		output wire [31:0] slv_reg12_output,
+        output wire [31:0] slv_reg13_output,
+        output wire [31:0] slv_reg14_output,
+        output wire [31:0] slv_reg15_output,
 		// User ports ends
 		// Do not modify the ports beyond this line
 
@@ -127,6 +131,10 @@
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg9;
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg10;
 	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg11;
+	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg12;
+	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg13;
+	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg14;
+	reg [C_S_AXI_DATA_WIDTH-1:0]	slv_reg15;
 	wire	 slv_reg_rden;
 	wire	 slv_reg_wren;
 	reg [C_S_AXI_DATA_WIDTH-1:0]	 reg_data_out;
@@ -145,7 +153,10 @@
 	assign slv_reg9_output = slv_reg9;
 	assign slv_reg10_output = slv_reg10;
 	assign slv_reg11_output = slv_reg11;
-
+    assign slv_reg12_output = slv_reg12;
+	assign slv_reg13_output = slv_reg13;
+	assign slv_reg14_output = slv_reg14;
+    assign slv_reg15_output = slv_reg15;    
 	// I/O Connections assignments
 
 	assign S_AXI_AWREADY	= axi_awready;
@@ -256,14 +267,18 @@
 	      slv_reg1 <= 16'd8;
 	      slv_reg2 <= 16'd3;
 	      slv_reg3 <= 4'd4;
-	      slv_reg4 <= 16'd82;
+	      slv_reg4 <= 16'd54;
 	      slv_reg5 <= 0;
-	      slv_reg6 <= 16'd4096;
+	      slv_reg6 <= 32'd4096;
 	      slv_reg7 <= 16'd4096;
 	      slv_reg8 <= 0;
 	      slv_reg9 <= 16'd32;
 	      slv_reg10 <= 16'd1;
 	      slv_reg11 <= 8'd200;
+	      slv_reg12 <= 32'd100;
+	      slv_reg13 <= 32'd0;
+	      slv_reg14 <= 32'd0;
+	      slv_reg15 <= 32'd1235;
 	    end 
 	  else begin
 	    if (slv_reg_wren)
@@ -353,6 +368,34 @@
 	                // Slave register 11
 	                slv_reg11[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
 	              end  
+	          4'hC:
+	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	                // Respective byte enables are asserted as per write strobes 
+	                // Slave register 12
+	                slv_reg12[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+	              end  
+	          4'hD:
+	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	                // Respective byte enables are asserted as per write strobes 
+	                // Slave register 12
+	                slv_reg13[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+	              end  
+	          4'hE:
+	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	                // Respective byte enables are asserted as per write strobes 
+	                // Slave register 12
+	                slv_reg14[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+	              end  
+	          4'hF:
+	            for ( byte_index = 0; byte_index <= (C_S_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+	              if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	                // Respective byte enables are asserted as per write strobes 
+	                // Slave register 12
+	                slv_reg15[(byte_index*8) +: 8] <= S_AXI_WDATA[(byte_index*8) +: 8];
+	              end  
 	          default : begin
 	                      slv_reg0 <= slv_reg0;
 	                      slv_reg1 <= slv_reg1;
@@ -366,6 +409,10 @@
 	                      slv_reg9 <= slv_reg9;
 	                      slv_reg10 <= slv_reg10;
 	                      slv_reg11 <= slv_reg11;
+	                      slv_reg12 <= slv_reg12;
+	                      slv_reg13 <= slv_reg13;
+	                      slv_reg14 <= slv_reg14;
+	                      slv_reg15 <= slv_reg15;
 	                    end
 	        endcase
 	      end
@@ -486,6 +533,10 @@
 	        4'h9   : reg_data_out <= slv_reg9;
 	        4'hA   : reg_data_out <= slv_reg10;
 	        4'hB   : reg_data_out <= slv_reg11;
+	        4'hC   : reg_data_out <= slv_reg12;
+	        4'hD   : reg_data_out <= slv_reg13;
+	        4'hE   : reg_data_out <= slv_reg14;
+	        4'hF   : reg_data_out <= slv_reg15;
 	        default : reg_data_out <= 0;
 	      endcase
 	end

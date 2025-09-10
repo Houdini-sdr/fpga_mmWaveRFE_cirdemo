@@ -22,11 +22,15 @@
         output wire [15:0] REAL_PD_SHIFT, // S4
         output wire [3:0] NOISE_SHIFT, // S5
         output wire [15:0] AMPLITUDE, // S6
-        output wire [15:0] DELAY, // S7
+        output wire [31:0] DELAY, // S7
         output wire [15:0]  CIR_EN, // S8
         output wire [15:0] HEADER_PER_FRAME, // S9
-        output wire [31:0] Pr_min, // S10
+        output wire [7:0] NODE_ID, // S10
         output wire [7:0] PD_BD_Delay, // S11
+        output wire [31:0] PR_MIN, // S12
+        output wire [31:0] BAC_TH, // S13        
+        output wire [31:0] RESERVED, // S14
+        output wire [31:0] VERSION_NUM, // S15                            
 		// User ports ends
 		// Do not modify the ports beyond this line
 
@@ -56,7 +60,7 @@
 
 	localparam ALL_BITS = 12 * 32;
 
-	wire [31:0] S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11;
+	wire [31:0] S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15;
 // Instantiation of Axi Bus Interface S00_AXI
 	cir_extract_settings_v1_0_S00_AXI # ( 
 		.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH),
@@ -74,6 +78,10 @@
 		.slv_reg9_output(S9),
 		.slv_reg10_output(S10),
 		.slv_reg11_output(S11),
+		.slv_reg12_output(S12),
+		.slv_reg13_output(S13),
+		.slv_reg14_output(S14),
+		.slv_reg15_output(S15),		
 		.S_AXI_ACLK(s00_axi_aclk),
 		.S_AXI_ARESETN(s00_axi_aresetn),
 		.S_AXI_AWADDR(s00_axi_awaddr),
@@ -106,11 +114,15 @@
      assign REAL_PD_SHIFT = S4[15:0];
      assign NOISE_SHIFT = S5[3:0];
      assign AMPLITUDE = S6[15:0];
-     assign DELAY = S7[15:0];
+     assign DELAY = S7[31:0];
      assign CIR_EN = S8[15:0];
      assign HEADER_PER_FRAME = S9[15:0];
-     assign Pr_min = S10[31:0];
+     assign NODE_ID = S10[7:0];
      assign PD_BD_Delay = S11[7:0]; 
+     assign PR_MIN = S12[31:0];
+     assign BAC_TH = S13[31:0];  
+     assign RESERVED = S14[31:0];
+     assign VERSION_NUM = S15[31:0];   
 	// User logic ends
 
 	endmodule

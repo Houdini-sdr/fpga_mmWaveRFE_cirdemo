@@ -31,12 +31,20 @@
         output wire cmd_done_1,          
         output wire cmd_done_2,
         output wire cmd_done_3,          
-        output wire cmd_done_4,        
+        output wire cmd_done_4,       
+        
+        // Beam ID 
+        output wire [6:0] beam_id_1,
+        output wire [6:0] beam_id_2,
+        output wire [6:0] beam_id_3,
+        output wire [6:0] beam_id_4,
+         
         output wire trig_start_1,
         output wire trig_end_1,
         output wire [15:0] seq_end_addr_1,
         output wire [15:0] seq_addr_1,
         output wire [94:0] cmd_data_1,
+        
         
 		// User ports ends
 		// Do not modify the ports beyond this line
@@ -113,6 +121,11 @@
         .cmd_done_3(cmd_done_3),
         .cmd_done_4(cmd_done_4),
         
+        .sector_1(sector_1),
+        .sector_2(sector_2),
+        .sector_3(sector_3),
+        .sector_4(sector_4),
+        
         .trig_start_1(trig_start_1),
         .trig_end_1(trig_end_1),
         .seq_end_addr_1(seq_end_addr_1),
@@ -168,7 +181,15 @@
 	);
 
 	// Add user logic here
-
+     wire [6:0] sector_1;
+     wire [6:0] sector_2;
+     wire [6:0] sector_3;
+     wire [6:0] sector_4;
+     
+     assign beam_id_1 = {sector_1[0], sector_1[1], sector_1[2], sector_1[3], sector_1[4], sector_1[5], sector_1[6]};
+     assign beam_id_2 = {sector_2[0], sector_2[1], sector_2[2], sector_2[3], sector_2[4], sector_2[5], sector_2[6]};
+     assign beam_id_3 = {sector_3[0], sector_3[1], sector_3[2], sector_3[3], sector_3[4], sector_3[5], sector_3[6]};
+     assign beam_id_4 = {sector_4[0], sector_4[1], sector_4[2], sector_4[3], sector_4[4], sector_4[5], sector_4[6]};
 	// User logic ends
 
 	endmodule
