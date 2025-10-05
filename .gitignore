@@ -1,0 +1,9 @@
+# generated project
+cir_sounder/
+
+# macOS
+.DS_Store
+
+# Vivado log
+*.log
+*.jou

@@ -4,15 +4,22 @@ Performs 802.11ad CIR estimation. Transmits Golay Sequences and performs cross-c
 
 Both monostatic (RADAR) and bistatic (communication) modes are supported. 
 
-In the bistatic node, packet detection and synchronization are also implemented. 
+In the bistatic node, packet detection and synchronization are also implemented.
 
-# Prerequisites - Install RFSoC-MTS overlay
-https://github.com/Xilinx/RFSoC-MTS
+> [!NOTE]\
+> This project requires **Vivado 2022.1**.
 
-# Regenerating the Vivado Project
-Unzip cir_sounder.sources.zip.  cd to the folder and 
+## Prerequisites
+- RFSoC4x2 BSP, see [this guide](https://rfsoc.dev/boards/rfsoc4x2#board-files) if it is not downloaded and configured.
+- For using the bitstream, install [`RFSoC-MTS` overlay](https://github.com/Xilinx/RFSoC-MTS).
 
-    source cir_sounder.tcl
+## Regenerating the Vivado Project
+At the directory with this `README.md` file, in Vivado, run
+```tcl
+source cir_sounder.tcl
+```
 
-in Vivado to regenerate the project.
+This will create a Vivado project in the `cir_sounder/` directory.
 
+## License
+See [LICENSE](./LICENSE) for details.
