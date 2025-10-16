@@ -225,9 +225,9 @@ set_property PACKAGE_PIN N4      [get_ports "dac2_clk_clk_n"] ;
 #set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD0*"]
 
 # Connect to GND
-set_property PACKAGE_PIN AF16 [ get_ports "PMOD0_0" ]
-set_property PACKAGE_PIN AJ16 [ get_ports "PMOD0_2" ]
-set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD0*"]
+#set_property PACKAGE_PIN AF16 [ get_ports "PMOD0_0" ]
+#set_property PACKAGE_PIN AJ16 [ get_ports "PMOD0_2" ]
+#set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD0*"]
 
 #set_property PACKAGE_PIN AG17 [ get_ports "PMOD0_1" ]
 set_property PACKAGE_PIN AG17 [ get_ports "ctrl_ch1" ]
@@ -248,9 +248,9 @@ set_property IOSTANDARD LVCMOS18 [ get_ports "ctrl_ch2"]
 #set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD1*"]
 
 # Connect to GND
-set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_0" ]
-set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_2" ]
-set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD1*"]
+#set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_0" ]
+#set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_2" ]
+#set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD1*"]
 
 #set_property PACKAGE_PIN AR13 [ get_ports "PMOD1_1" ]
 set_property PACKAGE_PIN AR13 [ get_ports "ctrl_ch3" ]
