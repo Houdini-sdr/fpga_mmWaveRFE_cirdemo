@@ -47,7 +47,7 @@ class RFPort:
         return self.pair_slice
 
 
-# RFSoC4x2 board labels from dev_references/RFSoC_RM_A6.pdf and motifpga presets.
+# RFSoC4x2 board labels
 # Vivado/xrfdc tile numbers are 0/2; ADC_A/B and DAC_A are on tile 2,
 # while ADC_C/D and DAC_B are on tile 0.
 RF_PORTS = {

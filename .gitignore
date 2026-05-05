@@ -17,7 +17,13 @@ checkpoints/
 *.log
 *.jou
 *.pb
+*.cache/
+*.hw/
+*.runs/
+*.sim/
+*.ip_user_files/
 xsim.dir/
+.Xil/
 
 # Dev-only files
 dev_references/
