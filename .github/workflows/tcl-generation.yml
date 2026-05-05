@@ -1,0 +1,58 @@
+name: Tcl generation
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  generate-cir-sounder-tcl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade pip PyYAML
+
+      - name: Generate Tcl from YAML configs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p build/ci
+          shopt -s nullglob
+          configs=(configs/*.yml configs/*.yaml)
+
+          if (( ${#configs[@]} == 0 )); then
+            echo "No YAML configs found under configs/"
+            exit 1
+          fi
+
+          for config in "${configs[@]}"; do
+            name="$(basename "${config%.*}")"
+            output="build/ci/${name}.tcl"
+
+            python generate_cir_sounder.py \
+              --config "$config" \
+              --output "$output" \
+              --generate-only \
+              --no-run-bitstream
+
+            test -s "$output"
+
+            if grep -Eq '@@[A-Z0-9_]+@@' "$output"; then
+              echo "Unreplaced template marker found in $output"
+              exit 1
+            fi
+
+            if grep -Eq '(^|[[:space:]])(launch_runs|wait_on_run)([[:space:]]|$)' "$output"; then
+              echo "Unexpected Vivado run command found in $output"
+              exit 1
+            fi
+          done
