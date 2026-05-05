@@ -1,0 +1,41 @@
+project_name: cir_sounder_tx_duc
+bitstream_name: cir_tx_duc
+generated_tcl: build/cir_tx_duc/cir_sounder.tcl
+origin_dir: "."
+cir_fifo_depth: 8192
+
+rfdc:
+  tx:
+    mode: c2r
+    rf_port: DAC_A
+    data_format: real_interleaved
+    interpolation: 2
+    data_width: 16
+    mixer_mode: 0
+    mixer_type: 2
+    center_frequency_mhz: 983.04
+    nyquist_zone: 1
+
+  rx_chains:
+    - name: rx0
+      core: CIR_Extract_1x1_top_0
+      mode: iq
+      i_port: ADC_B
+      q_port: ADC_A
+      i_debug_slot: 2
+      q_debug_slot: 4
+
+    - name: rx1
+      core: CIR_Extract_1x1_top_1
+      mode: iq
+      i_port: ADC_D
+      q_port: ADC_C
+
+  properties: {}
+
+outputs:
+  directory: build/artifacts/cir_tx_duc
+  copy_bitstream: true
+  copy_hwh: true
+  copy_xrfdc_utils: true
+  jobs: auto

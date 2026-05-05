@@ -1,9 +1,24 @@
 # generated project
-cir_sounder/
+/cir_sounder.tcl
+cir_sounder*/
+
+build/
+__pycache__/
+*.pyc
+
+# Vivado checkpoints
+*.dcp
+checkpoints/
 
 # macOS
 .DS_Store
 
-# Vivado log
+# Vivado
 *.log
 *.jou
+*.pb
+xsim.dir/
+
+# Dev-only files
+dev_references/
+sw_mmWaveRFE_cirdemo/

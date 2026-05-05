@@ -1,0 +1,35 @@
+project_name: cir_sounder
+bitstream_name: cir_sounder
+generated_tcl: cir_sounder.tcl
+origin_dir: "."
+cir_fifo_depth: 8192
+
+rfdc:
+  tx:
+    mode: iq
+    i_port: DAC_A
+    q_port: DAC_B
+
+  rx_chains:
+    - name: rx0
+      core: CIR_Extract_1x1_top_0
+      mode: iq
+      i_port: ADC_B
+      q_port: ADC_A
+      i_debug_slot: 2
+      q_debug_slot: 4
+
+    - name: rx1
+      core: CIR_Extract_1x1_top_1
+      mode: iq
+      i_port: ADC_D
+      q_port: ADC_C
+
+  properties: {}
+
+outputs:
+  directory: build/artifacts/cir_default
+  copy_bitstream: true
+  copy_hwh: true
+  copy_xrfdc_utils: true
+  jobs: auto

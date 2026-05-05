@@ -233,12 +233,41 @@
 	localparam integer ADDR_LSB = (C_S_AXI_DATA_WIDTH/32)+ 1;
 	localparam integer OPT_MEM_ADDR_BITS = 8;
 	localparam integer USER_NUM_MEM = 1;
+	localparam integer USER_NUM_BYTES = C_S_AXI_DATA_WIDTH/8;
+	localparam integer CMD_WR_ADDR_WIDTH = OPT_MEM_ADDR_BITS+1;
+	localparam integer CMD_WR_EVENT_WIDTH = CMD_WR_ADDR_WIDTH + C_S_AXI_DATA_WIDTH + USER_NUM_BYTES;
+	localparam integer CMD_WR_ADDR_LSB = 0;
+	localparam integer CMD_WR_DATA_LSB = CMD_WR_ADDR_LSB + CMD_WR_ADDR_WIDTH;
+	localparam integer CMD_WR_STRB_LSB = CMD_WR_DATA_LSB + C_S_AXI_DATA_WIDTH;
+	localparam integer CMD_WR_AXIS_WIDTH = 64;
+	localparam [2:0] CMD_TRIG_STRETCH_CYCLES = 3'd4;
 	//----------------------------------------------
 	//-- Signals for user logic memory space example
 	//------------------------------------------------
 	wire [OPT_MEM_ADDR_BITS:0] mem_address;
 	wire [USER_NUM_MEM-1:0] mem_select;
 	reg [C_S_AXI_DATA_WIDTH-1:0] mem_data_out[0 : USER_NUM_MEM-1];
+	wire user_mem_wren;
+	wire [CMD_WR_EVENT_WIDTH-1:0] cmd_wr_fifo_din;
+	wire [CMD_WR_EVENT_WIDTH-1:0] cmd_wr_fifo_dout;
+	wire [CMD_WR_AXIS_WIDTH-1:0] cmd_wr_s_axis_tdata;
+	wire [CMD_WR_AXIS_WIDTH-1:0] cmd_wr_m_axis_tdata;
+	wire cmd_wr_s_axis_tready;
+	wire cmd_wr_m_axis_tvalid;
+	wire [6:0] cmd_wr_m_axis_depth;
+	wire [CMD_WR_ADDR_WIDTH-1:0] cmd_wr_addr;
+	wire [C_S_AXI_DATA_WIDTH-1:0] cmd_wr_data;
+	wire [USER_NUM_BYTES-1:0] cmd_wr_strb;
+	wire cmd_wr_fifo_busy;
+	reg [2:0] cmd_wr_idle_count = 3'd7;
+	reg cmd_trig_d = 1'b0;
+	reg cmd_trig_pending = 1'b0;
+	reg [2:0] cmd_trig_stretch_count = 3'd0;
+	wire cmd_trig_safe;
+	reg beamscan_en_pending = 1'b0;
+	reg beamscan_en_safe = 1'b0;
+	(* ASYNC_REG = "TRUE" *) reg [2:0] cmd_wr_fifo_m_rst_sync = 3'b111;
+	wire cmd_wr_fifo_m_rst;
 
 	genvar i;
 	genvar j;
@@ -377,7 +406,11 @@
 	    end 
 	  else
 	    begin    
-	      if ( ~axi_wready && S_AXI_WVALID && axi_awv_awr_flag)
+	      if (!cmd_wr_s_axis_tready)
+	        begin
+	          axi_wready <= 1'b0;
+	        end
+	      else if ( ~axi_wready && S_AXI_WVALID && axi_awv_awr_flag)
 	        begin
 	          // slave can accept the write data
 	          axi_wready <= 1'b1;
@@ -575,16 +608,14 @@
 	      assign mem_address = (axi_arv_arr_flag? axi_araddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]:(axi_awv_awr_flag? axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB]:0));
 	    end
 	endgenerate
-	     
+	assign user_mem_wren = axi_wready && S_AXI_WVALID;
+
 	// implement Block RAM(s)
-	generate 
+	generate
 	  for(i=0; i<= USER_NUM_MEM-1; i=i+1)
 	    begin:BRAM_GEN
 	      wire mem_rden;
-	      wire mem_wren;
-	
-	      assign mem_wren = axi_wready && S_AXI_WVALID ;
-	
+
 	      assign mem_rden = axi_arv_arr_flag ; //& ~axi_rvalid
 	     
 	      for(mem_byte_index=0; mem_byte_index<= (C_S_AXI_DATA_WIDTH/8-1); mem_byte_index=mem_byte_index+1)
@@ -600,11 +631,11 @@
 	     
 	        always @( posedge S_AXI_ACLK )
 	        begin
-	          if (mem_wren && S_AXI_WSTRB[mem_byte_index])
+	          if (user_mem_wren && S_AXI_WSTRB[mem_byte_index])
 	            begin
 	              byte_ram[mem_address] <= data_in;
-	            end   
-	        end    
+	            end
+	        end
 	      
 	        always @( posedge S_AXI_ACLK )
 	        begin
@@ -617,9 +648,146 @@
 	    end
 	  end       
 	endgenerate
+
+	// Mirror software writes into the command clock domain.  The command
+	// sequencer must not read the AXI-clocked byte_ram hierarchy directly.
+	assign cmd_wr_fifo_din = {S_AXI_WSTRB, S_AXI_WDATA, mem_address};
+	assign cmd_wr_s_axis_tdata = {{(CMD_WR_AXIS_WIDTH-CMD_WR_EVENT_WIDTH){1'b0}}, cmd_wr_fifo_din};
+	assign cmd_wr_fifo_dout = cmd_wr_m_axis_tdata[CMD_WR_EVENT_WIDTH-1:0];
+	assign cmd_wr_addr = cmd_wr_fifo_dout[CMD_WR_DATA_LSB-1:CMD_WR_ADDR_LSB];
+	assign cmd_wr_data = cmd_wr_fifo_dout[CMD_WR_STRB_LSB-1:CMD_WR_DATA_LSB];
+	assign cmd_wr_strb = cmd_wr_fifo_dout[CMD_WR_EVENT_WIDTH-1:CMD_WR_STRB_LSB];
+	assign cmd_wr_fifo_busy = cmd_wr_m_axis_tvalid || (cmd_wr_m_axis_depth != 0);
+	assign cmd_wr_fifo_m_rst = cmd_wr_fifo_m_rst_sync[2];
+
+	always @(posedge cmd_clk2x or negedge S_AXI_ARESETN)
+	begin
+	  if (!S_AXI_ARESETN)
+	    cmd_wr_fifo_m_rst_sync <= 3'b111;
+	  else
+	    cmd_wr_fifo_m_rst_sync <= {cmd_wr_fifo_m_rst_sync[1:0], 1'b0};
+	end
+
+	axis_async_fifo #(
+	   .DEPTH(64),
+	   .DATA_WIDTH(CMD_WR_AXIS_WIDTH),
+	   .KEEP_ENABLE(0),
+	   .KEEP_WIDTH(1),
+	   .LAST_ENABLE(0),
+	   .ID_ENABLE(0),
+	   .ID_WIDTH(8),
+	   .DEST_ENABLE(0),
+	   .DEST_WIDTH(8),
+	   .USER_ENABLE(0),
+	   .USER_WIDTH(1),
+	   .RAM_PIPELINE(1),
+	   .OUTPUT_FIFO_ENABLE(1),
+	   .FRAME_FIFO(0),
+	   .DROP_OVERSIZE_FRAME(0),
+	   .DROP_BAD_FRAME(0),
+	   .DROP_WHEN_FULL(0),
+	   .MARK_WHEN_FULL(0),
+	   .PAUSE_ENABLE(0),
+	   .FRAME_PAUSE(0)
+	) cmd_wr_fifo (
+	   .s_clk(S_AXI_ACLK),
+	   .s_rst(~S_AXI_ARESETN),
+	   .s_axis_tdata(cmd_wr_s_axis_tdata),
+	   .s_axis_tkeep(1'b1),
+	   .s_axis_tvalid(user_mem_wren),
+	   .s_axis_tready(cmd_wr_s_axis_tready),
+	   .s_axis_tlast(1'b1),
+	   .s_axis_tid(8'd0),
+	   .s_axis_tdest(8'd0),
+	   .s_axis_tuser(1'b0),
+	   .m_clk(cmd_clk2x),
+	   .m_rst(cmd_wr_fifo_m_rst),
+	   .m_axis_tdata(cmd_wr_m_axis_tdata),
+	   .m_axis_tkeep(),
+	   .m_axis_tvalid(cmd_wr_m_axis_tvalid),
+	   .m_axis_tready(1'b1),
+	   .m_axis_tlast(),
+	   .m_axis_tid(),
+	   .m_axis_tdest(),
+	   .m_axis_tuser(),
+	   .s_pause_req(1'b0),
+	   .s_pause_ack(),
+	   .m_pause_req(1'b0),
+	   .m_pause_ack(),
+	   .s_status_depth(),
+	   .s_status_depth_commit(),
+	   .s_status_overflow(),
+	   .s_status_bad_frame(),
+	   .s_status_good_frame(),
+	   .m_status_depth(cmd_wr_m_axis_depth),
+	   .m_status_depth_commit(),
+	   .m_status_overflow(),
+	   .m_status_bad_frame(),
+	   .m_status_good_frame()
+	);
+
+	(* ram_style = "distributed" *) reg [7:0] cmd_byte_ram_0 [0 : 511];
+	(* ram_style = "distributed" *) reg [7:0] cmd_byte_ram_1 [0 : 511];
+	(* ram_style = "distributed" *) reg [7:0] cmd_byte_ram_2 [0 : 511];
+	(* ram_style = "distributed" *) reg [7:0] cmd_byte_ram_3 [0 : 511];
+
+	always @(posedge cmd_clk2x)
+	begin
+	  if (cmd_wr_m_axis_tvalid)
+	    begin
+	      if (cmd_wr_strb[0])
+	        cmd_byte_ram_0[cmd_wr_addr] <= cmd_wr_data[7:0];
+	      if (cmd_wr_strb[1])
+	        cmd_byte_ram_1[cmd_wr_addr] <= cmd_wr_data[15:8];
+	      if (cmd_wr_strb[2])
+	        cmd_byte_ram_2[cmd_wr_addr] <= cmd_wr_data[23:16];
+	      if (cmd_wr_strb[3])
+	        cmd_byte_ram_3[cmd_wr_addr] <= cmd_wr_data[31:24];
+	    end
+	end
+
+	assign cmd_trig_safe = (cmd_trig_stretch_count != 3'd0);
+
+	// Hold command-clock controls until the async write mirror has drained.
+	// cmd_trig can be a short software pulse, so latch a pending request and
+	// emit a stretched cmd_clk2x pulse after the mirrored command RAM is idle.
+	always @(posedge cmd_clk2x)
+	begin
+	  cmd_trig_d <= cmd_trig;
+	  if (cmd_trig && !cmd_trig_d)
+	    cmd_trig_pending <= 1'b1;
+
+	  if (cmd_wr_fifo_busy)
+	    cmd_wr_idle_count <= 3'd7;
+	  else if (cmd_wr_idle_count != 3'd0)
+	    cmd_wr_idle_count <= cmd_wr_idle_count - 1'b1;
+
+	  if (cmd_trig_stretch_count != 3'd0)
+	    cmd_trig_stretch_count <= cmd_trig_stretch_count - 1'b1;
+	  else if (cmd_trig_pending && !cmd_wr_fifo_busy && cmd_wr_idle_count == 3'd0)
+	    begin
+	      cmd_trig_stretch_count <= CMD_TRIG_STRETCH_CYCLES;
+	      cmd_trig_pending <= 1'b0;
+	    end
+
+	  if (!beamscan_en)
+	    begin
+	      beamscan_en_pending <= 1'b0;
+	      beamscan_en_safe <= 1'b0;
+	    end
+	  else if (!beamscan_en_safe)
+	    begin
+	      beamscan_en_pending <= 1'b1;
+	      if (!cmd_wr_fifo_busy && cmd_wr_idle_count == 3'd0)
+	        begin
+	          beamscan_en_pending <= 1'b0;
+	          beamscan_en_safe <= 1'b1;
+	        end
+	    end
+	end
 	//Output register or memory read data
 
-	always @( mem_data_out, axi_rvalid)
+	always @(*)
 	begin
 	  if (axi_rvalid) 
 	    begin
@@ -652,31 +820,30 @@
 	localparam SEQ_ADDR_OFFSET = 8;
 	localparam CMD_SEQ_LENGTH = 128;
 	
-	// BYTE_BRAM_GEN[byte_index];  byte_ram[row_address]
-	assign cmd_len = BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[0];
-	assign chan_sel = BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[0][3:0];
-	assign cmd_payload = {BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[0], 
-	   BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[1], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[1], BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[1], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[1],
-	   BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[2], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[2], BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[2], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[2]};
-	
-	assign time_gap_1 = {BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[4], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[4]};
-	assign time_gap_2 = {BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[4], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[4]};
-	assign time_gap_3 = {BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[5], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[5]};
-	assign time_gap_4 = {BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[5], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[5]};
-	
-	assign seq_end_addr_1 = {BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[6], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[6]};
-	assign seq_end_addr_2 = {BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[6], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[6]};
-	assign seq_end_addr_3 = {BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[7], BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[7]};
-	assign seq_end_addr_4 = {BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[7], BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[7]};
-	
-	assign memout_1a = BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[seq_addr_1[8:0] + SEQ_ADDR_OFFSET];
-	assign memout_1b = BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[seq_addr_1[8:0] + SEQ_ADDR_OFFSET];
-	assign memout_2a = BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[seq_addr_2[8:0] + SEQ_ADDR_OFFSET];
-	assign memout_2b = BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[seq_addr_2[8:0] + SEQ_ADDR_OFFSET];
-	assign memout_3a = BRAM_GEN[0].BYTE_BRAM_GEN[0].byte_ram[seq_addr_3[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
-	assign memout_3b = BRAM_GEN[0].BYTE_BRAM_GEN[1].byte_ram[seq_addr_3[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
-	assign memout_4a = BRAM_GEN[0].BYTE_BRAM_GEN[2].byte_ram[seq_addr_4[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
-	assign memout_4b = BRAM_GEN[0].BYTE_BRAM_GEN[3].byte_ram[seq_addr_4[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
+	assign cmd_len = cmd_byte_ram_3[0];
+	assign chan_sel = cmd_byte_ram_2[0][3:0];
+	assign cmd_payload = {cmd_byte_ram_0[0],
+	   cmd_byte_ram_3[1], cmd_byte_ram_2[1], cmd_byte_ram_1[1], cmd_byte_ram_0[1],
+	   cmd_byte_ram_3[2], cmd_byte_ram_2[2], cmd_byte_ram_1[2], cmd_byte_ram_0[2]};
+
+	assign time_gap_1 = {cmd_byte_ram_1[4], cmd_byte_ram_0[4]};
+	assign time_gap_2 = {cmd_byte_ram_3[4], cmd_byte_ram_2[4]};
+	assign time_gap_3 = {cmd_byte_ram_1[5], cmd_byte_ram_0[5]};
+	assign time_gap_4 = {cmd_byte_ram_3[5], cmd_byte_ram_2[5]};
+
+	assign seq_end_addr_1 = {cmd_byte_ram_1[6], cmd_byte_ram_0[6]};
+	assign seq_end_addr_2 = {cmd_byte_ram_3[6], cmd_byte_ram_2[6]};
+	assign seq_end_addr_3 = {cmd_byte_ram_1[7], cmd_byte_ram_0[7]};
+	assign seq_end_addr_4 = {cmd_byte_ram_3[7], cmd_byte_ram_2[7]};
+
+	assign memout_1a = cmd_byte_ram_0[seq_addr_1[8:0] + SEQ_ADDR_OFFSET];
+	assign memout_1b = cmd_byte_ram_1[seq_addr_1[8:0] + SEQ_ADDR_OFFSET];
+	assign memout_2a = cmd_byte_ram_2[seq_addr_2[8:0] + SEQ_ADDR_OFFSET];
+	assign memout_2b = cmd_byte_ram_3[seq_addr_2[8:0] + SEQ_ADDR_OFFSET];
+	assign memout_3a = cmd_byte_ram_0[seq_addr_3[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
+	assign memout_3b = cmd_byte_ram_1[seq_addr_3[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
+	assign memout_4a = cmd_byte_ram_2[seq_addr_4[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
+	assign memout_4b = cmd_byte_ram_3[seq_addr_4[8:0] + SEQ_ADDR_OFFSET + CMD_SEQ_LENGTH];
 		
 	localparam BEAMSCAN_CMD_LEN = 59;  // Manchester Encoder seq module manchester_encoder
 	
@@ -727,15 +894,13 @@
         clk1x <= ~clk1x;
     end
    
-    // Must use cmd_clk to avoid cross-clock domain timing issue. 
-    // Ideally XPM_CDC block should be added. 
     always @ (posedge cmd_clk2x) begin
-        if (cmd_trig == 1'b1) begin
+        if (cmd_trig_safe == 1'b1) begin
             cmd_data_1 <= {pre_1, cmd_payload[70:0]}; // total 95 bits. 
             cmd_data_2 <= {pre_1, cmd_payload[70:0]}; // total 95 bits. 
             cmd_data_3 <= {pre_1, cmd_payload[70:0]}; // total 95 bits. 
             cmd_data_4 <= {pre_1, cmd_payload[70:0]}; // total 95 bits. 
-        end else if (beamscan_en == 1'b1) begin
+        end else if (beamscan_en_safe == 1'b1) begin
             cmd_data_1 <= {pre_1, ~tr_1, tr_1, pre_2, sector_1[6:0], gain_1[3:0], crcarray[crc_addr_1], 36'h0}; // total length should be 95 bits
             cmd_data_2 <= {pre_1, ~tr_2, tr_2, pre_2, sector_2[6:0], gain_2[3:0], crcarray[crc_addr_2], 36'h0}; // total length should be 95 bits
             cmd_data_3 <= {pre_1, ~tr_3, tr_3, pre_2, sector_3[6:0], gain_3[3:0], crcarray[crc_addr_3], 36'h0}; // total length should be 95 bits
@@ -755,19 +920,19 @@
         
     wire trig_1, trig_2, trig_3, trig_4;
         
-    assign cmd_len_1 = (cmd_trig == 1'b1 && chan_sel[0] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
-    assign cmd_len_2 = (cmd_trig == 1'b1 && chan_sel[1] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
-    assign cmd_len_3 = (cmd_trig == 1'b1 && chan_sel[2] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
-    assign cmd_len_4 = (cmd_trig == 1'b1 && chan_sel[3] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
+    assign cmd_len_1 = (cmd_trig_safe == 1'b1 && chan_sel[0] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
+    assign cmd_len_2 = (cmd_trig_safe == 1'b1 && chan_sel[1] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
+    assign cmd_len_3 = (cmd_trig_safe == 1'b1 && chan_sel[2] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
+    assign cmd_len_4 = (cmd_trig_safe == 1'b1 && chan_sel[3] == 1'b1) ? cmd_len : BEAMSCAN_CMD_LEN;
         
-    assign trig_1 = (cmd_trig == 1'b1 && chan_sel[0] == 1'b1) ? 1'b1 : trig_scan_1; 
-    assign trig_2 = (cmd_trig == 1'b1 && chan_sel[1] == 1'b1) ? 1'b1 : trig_scan_2; 
-    assign trig_3 = (cmd_trig == 1'b1 && chan_sel[2] == 1'b1) ? 1'b1 : trig_scan_3; 
-    assign trig_4 = (cmd_trig == 1'b1 && chan_sel[3] == 1'b1) ? 1'b1 : trig_scan_4; 
+    assign trig_1 = (cmd_trig_safe == 1'b1 && chan_sel[0] == 1'b1) ? 1'b1 : trig_scan_1; 
+    assign trig_2 = (cmd_trig_safe == 1'b1 && chan_sel[1] == 1'b1) ? 1'b1 : trig_scan_2; 
+    assign trig_3 = (cmd_trig_safe == 1'b1 && chan_sel[2] == 1'b1) ? 1'b1 : trig_scan_3; 
+    assign trig_4 = (cmd_trig_safe == 1'b1 && chan_sel[3] == 1'b1) ? 1'b1 : trig_scan_4; 
         
     sequence_ctr u_seq_ctr_1
     (
-       .ctr_en           (beamscan_en),
+       .ctr_en           (beamscan_en_safe),
        .clk              (clk1x),
        .i_seq_end_addr   (seq_end_addr_1),
        .i_time_gap       (time_gap_1),
@@ -800,7 +965,7 @@
     
     sequence_ctr u_seq_ctr_2
     (
-       .ctr_en           (beamscan_en),
+       .ctr_en           (beamscan_en_safe),
        .clk              (clk1x),
        .i_seq_end_addr   (seq_end_addr_2),
        .i_time_gap       (time_gap_2),
@@ -833,7 +998,7 @@
     
     sequence_ctr u_seq_ctr_3
     (
-       .ctr_en           (beamscan_en),
+       .ctr_en           (beamscan_en_safe),
        .clk              (clk1x),
        .i_seq_end_addr   (seq_end_addr_3),
        .i_time_gap       (time_gap_3),
@@ -866,7 +1031,7 @@
     
     sequence_ctr u_seq_ctr_4
     (
-       .ctr_en           (beamscan_en),
+       .ctr_en           (beamscan_en_safe),
        .clk              (clk1x),
        .i_seq_end_addr   (seq_end_addr_4),
        .i_time_gap       (time_gap_4),

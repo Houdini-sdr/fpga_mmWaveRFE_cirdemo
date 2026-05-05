@@ -98,6 +98,12 @@
 		output wire  s00_axi_rvalid,
 		input wire  s00_axi_rready
 	);
+
+     wire [6:0] sector_1;
+     wire [6:0] sector_2;
+     wire [6:0] sector_3;
+     wire [6:0] sector_4;
+
 // Instantiation of Axi Bus Interface S00_AXI
 	pam_controller_v1_0_S00_AXI # ( 
 		.C_S_AXI_ID_WIDTH(C_S00_AXI_ID_WIDTH),
@@ -181,11 +187,6 @@
 	);
 
 	// Add user logic here
-     wire [6:0] sector_1;
-     wire [6:0] sector_2;
-     wire [6:0] sector_3;
-     wire [6:0] sector_4;
-     
      assign beam_id_1 = {sector_1[0], sector_1[1], sector_1[2], sector_1[3], sector_1[4], sector_1[5], sector_1[6]};
      assign beam_id_2 = {sector_2[0], sector_2[1], sector_2[2], sector_2[3], sector_2[4], sector_2[5], sector_2[6]};
      assign beam_id_3 = {sector_3[0], sector_3[1], sector_3[2], sector_3[3], sector_3[4], sector_3[5], sector_3[6]};

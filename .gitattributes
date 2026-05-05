@@ -1,0 +1,2 @@
+*.tcl.in linguist-language=Tcl
+ip_repo/pam_controller/pam_controller_1.0/src/verilog-axis/** linguist-vendored
