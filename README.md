@@ -11,12 +11,6 @@ In the bistatic node, packet detection and synchronization are also implemented.
 - RFSoC4x2 BSP, see [this guide](https://rfsoc.dev/boards/rfsoc4x2#board-files) if it is not downloaded and configured.
 - For using the bitstream, install [`RFSoC-MTS` overlay](https://github.com/Xilinx/RFSoC-MTS).
 
-Vivado 2024.1 must be able to find the RFSoC4x2 board files. On this workstation that is configured in `~/.Xilinx/Vivado/2024.1/Vivado_init.tcl`:
-```tcl
-set_param board.repoPaths [list "/data4/wuqiong/FPGA/RFSoC4x2-BSP/board_files" ]
-```
-The generated Tcl falls back to the device part if the board repo is not configured, which keeps headless checks from failing before block design creation.
-
 ## Regenerating the Vivado Project
 The user-facing entry point is the Python generator. The root `cir_sounder.tcl` is generated from `configs/cir_default.yml` and is ignored by git.
 
@@ -60,6 +54,9 @@ Checked-in source files are kept outside the generated Vivado project tree:
 - `ip_repo/`: local packaged IP
 
 Generated Vivado output such as `cir_sounder.tcl`, `cir_sounder/`, `cir_sounder.srcs/`, `cir_sounder.sim/`, `build/`, and `.dcp` checkpoints are ignored.
+
+## Research Applications
+- Used as a polarized digital radar at 60 GHz in [**MetaPolar: A Low-Cost, Passive, mmWave Radar-Readable Metasurface Road Sign**](https://dl.acm.org/doi/10.1145/3774906.3800464) *(SenSys '26)*.
 
 ## Contributing and Support
 Want to contribute? Great! Please email info@houdini-sdr.org 
