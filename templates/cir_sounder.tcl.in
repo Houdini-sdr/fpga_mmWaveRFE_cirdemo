@@ -18,6 +18,18 @@
 #   ./generate_cir_sounder.py --config <config.yml> --run-bitstream
 #*****************************************************************************************
 
+proc requireVivadoVersion { min_major min_minor } {
+  set version_short [version -short]
+  if { ![regexp {^([0-9]+)\.([0-9]+)} $version_short -> major minor] } {
+    error "Could not parse Vivado version from '$version_short'."
+  }
+  if { $major < $min_major || ($major == $min_major && $minor < $min_minor) } {
+    error "Vivado $min_major.$min_minor or later is required; running Vivado $version_short."
+  }
+}
+
+requireVivadoVersion 2024 1
+
 # Check file required for this script exists
 proc checkRequiredFiles { origin_dir} {
   set status true
@@ -98,7 +110,12 @@ set proj_dir [get_property directory [current_project]]
 
 # Set project properties
 set obj [current_project]
-set_property -name "board_part" -value "realdigital.org:rfsoc4x2:part0:1.0" -objects $obj
+set _xil_board_part_ "realdigital.org:rfsoc4x2:part0:1.0"
+if { [llength [get_board_parts -quiet $_xil_board_part_]] > 0 } {
+  set_property -name "board_part" -value $_xil_board_part_ -objects $obj
+} else {
+  puts "WARNING: Board part $_xil_board_part_ was not found. Continuing with part xczu48dr-ffvg1517-2-e; install RFSoC4x2 board files or set board.repoPaths in Vivado_init.tcl to enable board-specific metadata."
+}
 set_property -name "default_lib" -value "xil_defaultlib" -objects $obj
 set_property -name "enable_resource_estimation" -value "0" -objects $obj
 set_property -name "enable_vhdl_2008" -value "1" -objects $obj
@@ -253,7 +270,7 @@ proc cr_bd_cir_sounder { parentCell } {
   xilinx.com:ip:xlconcat:2.1\
   xilinx.com:ip:xlslice:1.0\
   xilinx.com:ip:xpm_cdc_gen:1.0\
-  xilinx.com:ip:zynq_ultra_ps_e:3.4\
+  xilinx.com:ip:zynq_ultra_ps_e:3.5\
   xilinx.com:user:cir_extract_settings:1.0\
   xilinx.com:ip:util_ds_buf:2.2\
   xilinx.com:ip:clk_wiz:6.0\
@@ -1171,7 +1188,7 @@ proc create_hier_cell_cir_extract_setting { parentCell nameHier } {
  ] $sync_tx_sector_id
 
   # Create instance: zynq_ultra_ps_e_0, and set properties
-  set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ultra_ps_e_0 ]
+  set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.5 zynq_ultra_ps_e_0 ]
   set_property -dict [ list \
    CONFIG.PSU_BANK_0_IO_STANDARD {LVCMOS33} \
    CONFIG.PSU_BANK_1_IO_STANDARD {LVCMOS18} \
@@ -2067,13 +2084,13 @@ catch {
  set_param runs.disableIDRFlowPropertyConstraints 1
 }
 
-# Create 'synth_1' run (if not found)
-if {[string equal [get_runs -quiet synth_1] ""]} {
-    create_run -name synth_1 -part xczu48dr-ffvg1517-2-e -flow {Vivado Synthesis 2022} -strategy "Vivado Synthesis Defaults" -report_strategy {No Reports} -constrset constrs_1
-} else {
-  set_property strategy "Vivado Synthesis Defaults" [get_runs synth_1]
-  set_property flow "Vivado Synthesis 2022" [get_runs synth_1]
+# Configure Vivado's default synthesis run. Do not set the run flow here;
+# create_project selects the correct flow for the installed Vivado version.
+set obj [get_runs -quiet synth_1]
+if { [string equal $obj ""] } {
+  error "Vivado did not create the default synthesis run synth_1."
 }
+set_property strategy "Vivado Synthesis Defaults" $obj
 set obj [get_runs synth_1]
 set_property set_report_strategy_name 1 $obj
 set_property report_strategy {Vivado Synthesis Default Reports} $obj
@@ -2091,16 +2108,15 @@ set_property -name "auto_incremental_checkpoint" -value "1" -objects $obj
 set_property -name "strategy" -value "Vivado Synthesis Defaults" -objects $obj
 
 # set the current synth run
-current_run -synthesis [get_runs synth_1]
+current_run -synthesis $obj
 
-# Create 'impl_1' run (if not found)
-if {[string equal [get_runs -quiet impl_1] ""]} {
-    create_run -name impl_1 -part xczu48dr-ffvg1517-2-e -flow {Vivado Implementation 2022} -strategy "Vivado Implementation Defaults" -report_strategy {No Reports} -constrset constrs_1 -parent_run synth_1
-} else {
-  set_property strategy "Vivado Implementation Defaults" [get_runs impl_1]
-  set_property flow "Vivado Implementation 2022" [get_runs impl_1]
+# Configure Vivado's default implementation run. Do not set the run flow here;
+# create_project selects the correct flow for the installed Vivado version.
+set obj [get_runs -quiet impl_1]
+if { [string equal $obj ""] } {
+  error "Vivado did not create the default implementation run impl_1."
 }
-set obj [get_runs impl_1]
+set_property strategy "Vivado Implementation Defaults" $obj
 set_property set_report_strategy_name 1 $obj
 set_property report_strategy {Vivado Implementation Default Reports} $obj
 set_property set_report_strategy_name 0 $obj

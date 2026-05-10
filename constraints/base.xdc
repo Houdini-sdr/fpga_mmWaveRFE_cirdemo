@@ -224,10 +224,10 @@ set_property PACKAGE_PIN N4      [get_ports "dac2_clk_clk_n"] ;
 #set_property PACKAGE_PIN AK16 [ get_ports "PMOD0_7" ]
 #set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD0*"]
 
-# Connect to GND
-set_property PACKAGE_PIN AF16 [ get_ports "PMOD0_0" ]
-set_property PACKAGE_PIN AJ16 [ get_ports "PMOD0_2" ]
-set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD0*"]
+# Optional PMOD pins are not exposed by every generated top level.
+set_property -quiet PACKAGE_PIN AF16 [ get_ports -quiet "PMOD0_0" ]
+set_property -quiet PACKAGE_PIN AJ16 [ get_ports -quiet "PMOD0_2" ]
+set_property -quiet IOSTANDARD LVCMOS18 [ get_ports -quiet "PMOD0*"]
 
 #set_property PACKAGE_PIN AG17 [ get_ports "PMOD0_1" ]
 set_property PACKAGE_PIN AG17 [ get_ports "ctrl_ch1" ]
@@ -247,10 +247,10 @@ set_property IOSTANDARD LVCMOS18 [ get_ports "ctrl_ch2"]
 #set_property PACKAGE_PIN AU14 [ get_ports "PMOD1_7" ]
 #set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD1*"]
 
-# Connect to GND
-set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_0" ]
-set_property PACKAGE_PIN AU13 [ get_ports "PMOD1_2" ]
-set_property IOSTANDARD LVCMOS18 [ get_ports "PMOD1*"]
+# Optional PMOD pins are not exposed by every generated top level.
+set_property -quiet PACKAGE_PIN AU13 [ get_ports -quiet "PMOD1_0" ]
+set_property -quiet PACKAGE_PIN AU13 [ get_ports -quiet "PMOD1_2" ]
+set_property -quiet IOSTANDARD LVCMOS18 [ get_ports -quiet "PMOD1*"]
 
 #set_property PACKAGE_PIN AR13 [ get_ports "PMOD1_1" ]
 set_property PACKAGE_PIN AR13 [ get_ports "ctrl_ch3" ]

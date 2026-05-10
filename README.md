@@ -5,11 +5,17 @@ Both monostatic (radar) and bistatic (communication) modes are supported.
 In the bistatic node, packet detection and synchronization are also implemented.
 
 > [!NOTE]\
-> This project requires **Vivado 2022.1** or higher.
+> This project is maintained for **Vivado 2024.1** or later.
 
 ## Prerequisites
 - RFSoC4x2 BSP, see [this guide](https://rfsoc.dev/boards/rfsoc4x2#board-files) if it is not downloaded and configured.
 - For using the bitstream, install [`RFSoC-MTS` overlay](https://github.com/Xilinx/RFSoC-MTS).
+
+Vivado 2024.1 must be able to find the RFSoC4x2 board files. On this workstation that is configured in `~/.Xilinx/Vivado/2024.1/Vivado_init.tcl`:
+```tcl
+set_param board.repoPaths [list "/data4/wuqiong/FPGA/RFSoC4x2-BSP/board_files" ]
+```
+The generated Tcl falls back to the device part if the board repo is not configured, which keeps headless checks from failing before block design creation.
 
 ## Regenerating the Vivado Project
 The user-facing entry point is the Python generator. The root `cir_sounder.tcl` is generated from `configs/cir_default.yml` and is ignored by git.
